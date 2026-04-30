@@ -196,13 +196,41 @@
         );
 
         // ──────────── LEFT PANEL: INPUTS ────────────
-        const FormPanel = ({ formData, setFormData, itemForm, setItemForm, items, setItems, onDownload, onReset, onImportCSV, onExportCSV }) => {
+        const FormPanel = ({ formData, setFormData, itemForm, setItemForm, items, setItems, onDownload, onReset, onImportCSV, onExportCSV, onWhatsApp, catalog, setCatalog }) => {
             const addItem = () => {
                 if (!itemForm.name.trim() || !itemForm.rate || itemForm.qty <= 0) return alert('Please fill Item Name, Qty & Rate');
                 const taxable = itemForm.qty * itemForm.rate;
                 const gstAmt = taxable * (itemForm.gst / 100);
                 setItems([...items, { id: Date.now(), ...itemForm, taxable, gstAmt, total: taxable + gstAmt }]);
+                
+                // Save to Catalog
+                const exists = catalog.find(c => c.name.toLowerCase() === itemForm.name.trim().toLowerCase());
+                if (!exists) {
+                    const newCat = [...catalog, { name: itemForm.name.trim(), hsn: itemForm.hsn, unit: itemForm.unit, rate: itemForm.rate, gst: itemForm.gst }];
+                    setCatalog(newCat);
+                    localStorage.setItem('kirana_catalog', JSON.stringify(newCat));
+                }
+                
                 setItemForm({ name: '', hsn: '', qty: 1, unit: 'Pcs', rate: '', gst: 5 });
+                const nameInput = document.getElementById('item-name-input');
+                if (nameInput) nameInput.focus();
+            };
+
+            const handleItemNameChange = (e) => {
+                const val = e.target.value;
+                const match = catalog.find(c => c.name.toLowerCase() === val.toLowerCase());
+                if (match) {
+                    setItemForm({ ...itemForm, name: val, hsn: match.hsn, unit: match.unit, rate: match.rate, gst: match.gst, qty: 1 });
+                } else {
+                    setItemForm({ ...itemForm, name: val });
+                }
+            };
+
+            const handleBarcodeScan = (e) => {
+                if (e.key === 'Enter' && itemForm.name.trim()) {
+                    e.preventDefault();
+                    addItem();
+                }
             };
 
             const removeItem = (id) => setItems(items.filter(i => i.id !== id));
@@ -255,7 +283,13 @@
                     {/* Add Items Section */}
                     <SectionCard title="Add Items" icon="📦">
                         <div className="grid grid-cols-12 gap-3 mb-2">
-                            <div className="col-span-12 sm:col-span-6"><Input label="Item Name" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} placeholder="e.g. Sugar" /></div>
+                            <div className="col-span-12 sm:col-span-6">
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Item Name / Barcode</label>
+                                <input id="item-name-input" list="catalog-list" value={itemForm.name} onChange={handleItemNameChange} onKeyDown={handleBarcodeScan} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm transition-all input-focus" placeholder="Scan or type..." />
+                                <datalist id="catalog-list">
+                                    {catalog.map((c, i) => <option key={i} value={c.name} />)}
+                                </datalist>
+                            </div>
                             <div className="col-span-4 sm:col-span-2"><Input label="HSN" value={itemForm.hsn} onChange={e => setItemForm({...itemForm, hsn: e.target.value})} placeholder="1701" /></div>
                             <div className="col-span-4 sm:col-span-2"><Input label="Qty" type="number" min="1" value={itemForm.qty} onChange={e => setItemForm({...itemForm, qty: Number(e.target.value)})} /></div>
                             <div className="col-span-4 sm:col-span-2">
@@ -322,10 +356,13 @@
                     {/* Action Buttons */}
                     <div className="grid grid-cols-2 gap-3 pb-6">
                         <button onClick={onDownload} className="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-md transition flex items-center justify-center gap-2">
-                            <span></span> Save PDF
+                            <span>📥</span> Save PDF
                         </button>
-                        <button onClick={onReset} className="bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 py-3 rounded-xl font-bold shadow-sm transition">
-                            🔄 Reset
+                        <button onClick={onWhatsApp} className="bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold shadow-md transition flex items-center justify-center gap-2">
+                            <span>📱</span> WhatsApp
+                        </button>
+                        <button onClick={onReset} className="col-span-2 bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 py-3 rounded-xl font-bold shadow-sm transition">
+                            🔄 Reset Invoice
                         </button>
                     </div>
                 </div>
@@ -507,6 +544,7 @@
             });
             const [items, setItems] = useState([]);
             const [itemForm, setItemForm] = useState({ name: '', hsn: '', qty: 1, unit: 'Pcs', rate: '', gst: 5 });
+            const [catalog, setCatalog] = useState(() => JSON.parse(localStorage.getItem('kirana_catalog')) || []);
             const [status, setStatus] = useState(null); // { type: 'loading'|'success'|'info', message: '' }
 
             const totals = useMemo(() => {
@@ -529,6 +567,14 @@
             }, [items, formData.invoice.discountValue, formData.invoice.discountType, formData.invoice.amountPaid]);
 
             const amountWords = useMemo(() => numberToWords(Math.round(totals.grandTotal)), [totals.grandTotal]);
+
+            const handleWhatsApp = () => {
+                if (!formData.customer.phone) return alert('Please enter a Customer Phone Number to share via WhatsApp.');
+                const text = `*${formData.store.name}*\n\nHi ${formData.customer.name || 'Customer'},\nYour invoice *${formData.invoice.no}* for ₹${totals.grandTotal.toFixed(2)} is ready.\n\n*Amount Paid:* ₹${totals.amountPaid.toFixed(2)}\n*Balance Due:* ₹${totals.balanceDue.toFixed(2)}\n\nThank you for shopping with us!`;
+                const phone = formData.customer.phone.replace(/[^0-9]/g, '');
+                const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+                window.open(url, '_blank');
+            };
 
             const handleExportCSV = () => exportToCSV(items);
 
@@ -635,6 +681,9 @@
                                 onReset={handleReset}
                                 onImportCSV={handleImportCSV}
                                 onExportCSV={handleExportCSV}
+                                onWhatsApp={handleWhatsApp}
+                                catalog={catalog}
+                                setCatalog={setCatalog}
                             />
                         </div>
                         
