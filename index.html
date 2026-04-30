@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kirana Pro Invoice Generator</title>
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- PDF Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Input Focus Styles */
+        .input-focus:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15); transition: all 0.2s; }
+
+        /* Print Styles */
+        @media print {
+            .no-print { display: none !important; }
+            .print-container { 
+                display: block !important; 
+                width: 100% !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                background: white !important;
+                box-shadow: none !important;
+                border: none !important;
+                position: static !important;
+                top: auto !important;
+            }
+            body { background: white; }
+            @page { margin: 10mm; size: A4; }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useCallback, useRef } = React;
+
+        // ─────────── UTILITY: Number to Words (Indian Format) ────────────
+        const numberToWords = (num) => {
+            if (num === 0) return 'Zero';
+            if (num < 0) return `Minus ${numberToWords(-num)}`;
+            
+            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            
+            const convert = (n) => {
+                if (n < 20) return ones[n];
+                if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+                if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' and ' + convert(n % 100) : '');
+                if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
+                if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
+                return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
+            };
+            
+            return ` ${convert(num)} Rupees Only`;
+        };
+
+        // ──────────── PDF GENERATION LOGIC ────────────
+        const generatePDF = async (elementId, fileName) => {
+            const element = document.getElementById(elementId);
+            if (!element) throw new Error('Invoice element not found');
+
+            try {
+                // Attempt Screenshot Method
+                const canvas = await html2canvas(element, {
+                    scale: 2, // High res
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    foreignObjectRendering: false, // Helps with some browser issues
+                    logging: false,
+                    scrollX: 0,
+                    scrollY: -window.scrollY
+                });
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = 10;
+                
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                const ratio = Math.min((pageWidth - margin * 2) / imgWidth, (pageHeight - margin * 2) / imgHeight);
+                
+                const finalWidth = imgWidth * ratio;
+                const finalHeight = imgHeight * ratio;
+                const x = (pageWidth - finalWidth) / 2;
+                const y = margin;
+
+                pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y, finalWidth, finalHeight);
+                pdf.save(fileName);
+                return true; // Success
+            } catch (err) {
+                console.warn("Screenshot PDF failed (likely due to file:// protocol), falling back to Print...", err);
+                throw err; // Throw to trigger fallback
+            }
+        };
+
+        // ──────────── CSV IMPORT / EXPORT ────────────
+        const parseCSV = (text) => {
+            const rows = [];
+            let inQuotes = false;
+            let currentField = '';
+            let currentRow = [];
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+                
+                if (char === '"' && inQuotes && nextChar === '"') {
+                    currentField += '"';
+                    i++;
+                } else if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    currentRow.push(currentField);
+                    currentField = '';
+                } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+                    if (char === '\r') i++;
+                    currentRow.push(currentField);
+                    rows.push(currentRow);
+                    currentRow = [];
+                    currentField = '';
+                } else {
+                    currentField += char;
+                }
+            }
+            if (currentField !== '' || currentRow.length > 0) {
+                currentRow.push(currentField);
+                rows.push(currentRow);
+            }
+            return rows;
+        };
+
+        const exportToCSV = (items) => {
+            if (items.length === 0) return alert('No items to export');
+            const headers = ['Item Name', 'HSN', 'Qty', 'Unit', 'Rate', 'GST%'];
+            const rows = items.map(i => [i.name, i.hsn || '', i.qty, i.unit, i.rate, i.gst]);
+            const csvContent = [headers, ...rows].map(e => e.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `invoice_items_${Date.now()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        // ──────────── UI COMPONENTS ────────────
+        const SectionCard = ({ title, icon, children }) => (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-5">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span className="text-lg">{icon}</span> {title}
+                </h3>
+                {children}
+            </div>
+        );
+
+        const Input = ({ label, ...props }) => (
+            <div className="mb-3">
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
+                <input {...props} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm transition-all input-focus" />
+            </div>
+        );
+
+        const Select = ({ label, options, ...props }) => (
+            <div className="mb-3">
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</label>
+                <select {...props} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm transition-all input-focus">
+                    {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+            </div>
+        );
+
+        // ──────────── LEFT PANEL: INPUTS ────────────
+        const FormPanel = ({ formData, setFormData, itemForm, setItemForm, items, setItems, onDownload, onReset, onImportCSV, onExportCSV }) => {
+            const addItem = () => {
+                if (!itemForm.name.trim() || !itemForm.rate || itemForm.qty <= 0) return alert('Please fill Item Name, Qty & Rate');
+                const taxable = itemForm.qty * itemForm.rate;
+                const gstAmt = taxable * (itemForm.gst / 100);
+                setItems([...items, { id: Date.now(), ...itemForm, taxable, gstAmt, total: taxable + gstAmt }]);
+                setItemForm({ name: '', hsn: '', qty: 1, unit: 'Pcs', rate: '', gst: 5 });
+            };
+
+            const removeItem = (id) => setItems(items.filter(i => i.id !== id));
+            const updateStore = (f, v) => setFormData(prev => ({ ...prev, store: { ...prev.store, [f]: v } }));
+            const updateCust = (f, v) => setFormData(prev => ({ ...prev, customer: { ...prev.customer, [f]: v } }));
+            const updateInv = (f, v) => setFormData(prev => ({ ...prev, invoice: { ...prev.invoice, [f]: v } }));
+
+            return (
+                <div className="space-y-0">
+                    {/* Store Section */}
+                    <SectionCard title="Store Details" icon="">
+                        <div className="grid grid-cols-2 gap-3">
+                            <Input label="Store Name" value={formData.store.name} onChange={e => updateStore('name', e.target.value)} />
+                            <Input label="GSTIN" value={formData.store.gstin} onChange={e => updateStore('gstin', e.target.value.toUpperCase())} maxLength={15} placeholder="29ABCDE..." />
+                        </div>
+                        <Input label="Address" value={formData.store.address} onChange={e => updateStore('address', e.target.value)} />
+                        <div className="grid grid-cols-2 gap-3">
+                            <Input label="Phone" value={formData.store.phone} onChange={e => updateStore('phone', e.target.value)} />
+                            <Input label="Email" value={formData.store.email} onChange={e => updateStore('email', e.target.value)} type="email" />
+                        </div>
+                    </SectionCard>
+
+                    {/* Customer Section */}
+                    <SectionCard title="Bill To" icon="👤">
+                        <div className="grid grid-cols-2 gap-3">
+                            <Input label="Customer Name" value={formData.customer.name} onChange={e => updateCust('name', e.target.value)} placeholder="Walk-in Customer" />
+                            <Input label="Phone" value={formData.customer.phone} onChange={e => updateCust('phone', e.target.value)} />
+                        </div>
+                        <Input label="Address" value={formData.customer.address} onChange={e => updateCust('address', e.target.value)} />
+                        <div className="grid grid-cols-2 gap-3">
+                            <Select label="Payment Mode" value={formData.invoice.payment} onChange={e => updateInv('payment', e.target.value)} options={[
+                                { value: 'Cash', label: '💵 Cash' }, { value: 'UPI', label: '📱 UPI' }, { value: 'Card', label: '💳 Card' }, { value: 'Credit', label: '📅 Credit' }
+                            ]} />
+                            <Select label="Place of Supply" value={formData.invoice.place} onChange={e => updateInv('place', e.target.value)} options={[
+                                { value: 'intrastate', label: 'Intra-State (CGST+SGST)' }, { value: 'interstate', label: 'Inter-State (IGST)' }
+                            ]} />
+                        </div>
+                    </SectionCard>
+
+                    {/* Add Items Section */}
+                    <SectionCard title="Add Items" icon="📦">
+                        <div className="grid grid-cols-12 gap-3 mb-2">
+                            <div className="col-span-12 sm:col-span-6"><Input label="Item Name" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} placeholder="e.g. Sugar" /></div>
+                            <div className="col-span-4 sm:col-span-2"><Input label="HSN" value={itemForm.hsn} onChange={e => setItemForm({...itemForm, hsn: e.target.value})} placeholder="1701" /></div>
+                            <div className="col-span-4 sm:col-span-2"><Input label="Qty" type="number" min="1" value={itemForm.qty} onChange={e => setItemForm({...itemForm, qty: Number(e.target.value)})} /></div>
+                            <div className="col-span-4 sm:col-span-2">
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Unit</label>
+                                <select value={itemForm.unit} onChange={e => setItemForm({...itemForm, unit: e.target.value})} className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm input-focus">
+                                    {['Pcs','Kg','Ltr','Pkt','Box','Nos'].map(u => <option key={u}>{u}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-12 gap-3">
+                            <div className="col-span-5"><Input label="Rate (₹)" type="number" step="0.01" value={itemForm.rate} onChange={e => setItemForm({...itemForm, rate: Number(e.target.value)})} placeholder="0.00" /></div>
+                            <div className="col-span-3">
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">GST %</label>
+                                <select value={itemForm.gst} onChange={e => setItemForm({...itemForm, gst: Number(e.target.value)})} className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm input-focus">
+                                    {[0, 5, 12, 18, 28].map(r => <option key={r} value={r}>{r}%</option>)}
+                                </select>
+                            </div>
+                            <div className="col-span-4 flex items-end">
+                                <button onClick={addItem} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg transition shadow-sm flex items-center justify-center gap-2">
+                                    <span>+</span> Add
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Item List Mini */}
+                        {items.length > 0 && (
+                            <div className="mt-4 border-t pt-3">
+                                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Added Items ({items.length})</p>
+                                <div className="space-y-2 max-h-32 overflow-y-auto custom-scroll pr-1">
+                                    {items.map(i => (
+                                        <div key={i.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg text-xs border border-gray-100">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-gray-800 truncate">{i.name}</p>
+                                                <p className="text-gray-400">{i.qty} {i.unit} @ ₹{i.rate}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-emerald-600">₹{i.total.toFixed(2)}</span>
+                                                <button onClick={() => removeItem(i.id)} className="text-red-400 hover:text-red-600 font-bold px-1">×</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </SectionCard>
+
+                    {/* Data Options */}
+                    <SectionCard title="Data Backup" icon="💾">
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                            <button onClick={() => document.getElementById('csv-upload').click()} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
+                                📥 Import CSV
+                            </button>
+                            <input type="file" id="csv-upload" accept=".csv" className="hidden" onChange={onImportCSV} />
+                            
+                            <button onClick={onExportCSV} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
+                                📤 Export CSV
+                            </button>
+                        </div>
+                        <a href="./sample_items.csv" download className="text-xs text-blue-600 hover:text-blue-800 underline block text-center">
+                            Download Sample CSV format
+                        </a>
+                    </SectionCard>
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-3 pb-6">
+                        <button onClick={onDownload} className="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-md transition flex items-center justify-center gap-2">
+                            <span></span> Save PDF
+                        </button>
+                        <button onClick={onReset} className="bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 py-3 rounded-xl font-bold shadow-sm transition">
+                            🔄 Reset
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // ──────────── RIGHT PANEL: INVOICE PREVIEW ────────────
+        const InvoicePreview = ({ formData, items, totals, amountWords }) => {
+            const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+            const isInter = formData.invoice.place === 'interstate';
+
+            return (
+                <div className="print-container sticky top-6">
+                    <div id="invoice-capture" className="invoice-paper bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+                        {/* Invoice Header */}
+                        <div className="bg-gray-900 text-white px-8 py-8 flex justify-between items-start">
+                            <div>
+                                <h1 className="text-2xl font-bold tracking-tight mb-1">{formData.store.name}</h1>
+                                <p className="text-gray-400 text-sm leading-relaxed max-w-md">
+                                    {formData.store.address}<br/>
+                                    GSTIN: <span className="text-white font-mono">{formData.store.gstin}</span>
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <h2 className="text-3xl font-black tracking-widest text-emerald-400 uppercase">Tax Invoice</h2>
+                                <div className="mt-4 inline-block px-4 py-1 bg-white/10 rounded-full text-xs font-medium border border-white/10">
+                                    Original for Recipient
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Invoice Meta Info */}
+                        <div className="px-8 py-6 bg-gray-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div>
+                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bill To</h4>
+                                <p className="text-lg font-bold text-gray-800">{formData.customer.name || 'Walk-in Customer'}</p>
+                                <p className="text-sm text-gray-500">{formData.customer.address || '-'}</p>
+                                <p className="text-sm text-gray-500 mt-1">Ph: {formData.customer.phone || '-'}</p>
+                            </div>
+                            <div className="sm:text-right space-y-2">
+                                <div className="flex sm:justify-end gap-4 text-sm">
+                                    <span className="text-gray-400 font-medium">Invoice No:</span>
+                                    <span className="font-mono font-bold text-gray-800">{formData.invoice.no}</span>
+                                </div>
+                                <div className="flex sm:justify-end gap-4 text-sm">
+                                    <span className="text-gray-400 font-medium">Date:</span>
+                                    <span className="font-bold text-gray-800">{formatDate(formData.invoice.date)}</span>
+                                </div>
+                                <div className="flex sm:justify-end gap-4 text-sm">
+                                    <span className="text-gray-400 font-medium">Payment:</span>
+                                    <span className="font-bold text-gray-800">{formData.invoice.payment}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Items Table */}
+                        <div className="p-8">
+                            <table className="w-full text-sm border-collapse">
+                                <thead>
+                                    <tr className="border-b-2 border-gray-200 text-gray-500 text-[10px] uppercase tracking-wider">
+                                        <th className="pb-3 text-left w-8">#</th>
+                                        <th className="pb-3 text-left">Description</th>
+                                        <th className="pb-3 text-center w-16">Qty</th>
+                                        <th className="pb-3 text-right w-20">Rate</th>
+                                        <th className="pb-3 text-right w-20">Taxable</th>
+                                        <th className="pb-3 text-center w-16">GST</th>
+                                        <th className="pb-3 text-right w-20">Amt</th>
+                                        <th className="pb-3 text-right w-24">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {items.length === 0 ? (
+                                        <tr><td colSpan="8" className="py-12 text-center text-gray-300 italic font-medium">No items added yet</td></tr>
+                                    ) : items.map((item, idx) => (
+                                        <tr key={item.id} className="group hover:bg-gray-50 transition-colors">
+                                            <td className="py-3 text-gray-400 text-xs">{idx + 1}</td>
+                                            <td className="py-3">
+                                                <div className="font-bold text-gray-800">{item.name}</div>
+                                                <div className="text-[10px] text-gray-400 font-mono">HSN: {item.hsn || '-'}</div>
+                                            </td>
+                                            <td className="py-3 text-center">{item.qty} {item.unit}</td>
+                                            <td className="py-3 text-right">{item.rate.toFixed(2)}</td>
+                                            <td className="py-3 text-right">{item.taxable.toFixed(2)}</td>
+                                            <td className="py-3 text-center">{item.gst}%</td>
+                                            <td className="py-3 text-right">{item.gstAmt.toFixed(2)}</td>
+                                            <td className="py-3 text-right font-bold text-gray-800">{item.total.toFixed(2)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Totals & Summary */}
+                        <div className="px-8 pb-8">
+                            <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 mb-6 flex items-center justify-between">
+                                <p className="text-sm text-amber-900 font-medium">Amount in Words:</p>
+                                <span className="font-bold text-amber-800 text-right">{amountWords}</span>
+                            </div>
+                            
+                            <div className="flex justify-end">
+                                <div className="w-full sm:w-72 bg-gray-50 rounded-xl p-5 space-y-3 text-sm border border-gray-100">
+                                    <div className="flex justify-between text-gray-600">
+                                        <span>Sub Total</span><span>₹{totals.subtotal.toFixed(2)}</span>
+                                    </div>
+                                    {!isInter && (
+                                        <>
+                                            <div className="flex justify-between text-gray-600"><span>CGST</span><span>₹{(totals.totalGST / 2).toFixed(2)}</span></div>
+                                            <div className="flex justify-between text-gray-600"><span>SGST</span><span>₹{(totals.totalGST / 2).toFixed(2)}</span></div>
+                                        </>
+                                    )}
+                                    {isInter && (
+                                        <div className="flex justify-between text-gray-600"><span>IGST</span><span>₹{totals.totalGST.toFixed(2)}</span></div>
+                                    )}
+                                    <div className="h-px bg-gray-200 my-1"></div>
+                                    <div className="flex justify-between text-xl font-black text-gray-900 pt-1">
+                                        <span>Grand Total</span><span>₹{totals.grandTotal.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer: Bank & Terms */}
+                        <div className="px-8 pb-8 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs text-gray-500 border-t border-gray-100 pt-6">
+                            <div>
+                                <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">🏦 Bank Details</h4>
+                                <p className="leading-relaxed">
+                                    SBI | A/C: 1234567890 | IFSC: SBIN0001234<br/>
+                                    Holder: {formData.store.name}
+                                </p>
+                            </div>
+                            <div className="sm:text-right">
+                                <h4 className="font-bold text-gray-800 mb-2">📜 Terms</h4>
+                                <p className="leading-relaxed">
+                                    1. Goods once sold will not be taken back.<br/>
+                                    2. Subject to local jurisdiction.<br/>
+                                    3. E. & O.E.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Signature */}
+                        <div className="px-8 pb-8 flex justify-end">
+                            <div className="text-center">
+                                <div className="w-40 h-16 border-b-2 border-gray-800 mb-2"></div>
+                                <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Authorized Signatory</p>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-gray-900 py-3 text-center text-[10px] text-gray-500 tracking-wider">
+                            THANK YOU FOR SHOPPING WITH US
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ──────────── MAIN APP ────────────
+        const App = () => {
+            const [formData, setFormData] = useState({
+                store: { name: 'Sri Lakshmi Kirana Stores', gstin: '29ABCDE1234F1Z5', address: '#42, MG Road, Bengaluru - 560011', phone: '+91 98765 43210', email: '' },
+                customer: { name: '', phone: '', address: '' },
+                invoice: { no: `INV-${String(1).padStart(4, '0')}`, date: new Date().toISOString().split('T')[0], payment: 'Cash', place: 'intrastate' }
+            });
+            const [items, setItems] = useState([]);
+            const [itemForm, setItemForm] = useState({ name: '', hsn: '', qty: 1, unit: 'Pcs', rate: '', gst: 5 });
+            const [status, setStatus] = useState(null); // { type: 'loading'|'success'|'info', message: '' }
+
+            const totals = useMemo(() => {
+                const subtotal = items.reduce((sum, i) => sum + i.taxable, 0);
+                const totalGST = items.reduce((sum, i) => sum + i.gstAmt, 0);
+                const grandTotal = items.reduce((sum, i) => sum + i.total, 0);
+                return { subtotal, totalGST, grandTotal };
+            }, [items]);
+
+            const amountWords = useMemo(() => numberToWords(Math.round(totals.grandTotal)), [totals.grandTotal]);
+
+            const handleExportCSV = () => exportToCSV(items);
+
+            const handleImportCSV = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const text = evt.target.result;
+                    const rows = parseCSV(text);
+                    if (rows.length < 2) return alert('Invalid CSV or empty');
+                    
+                    const newItems = [];
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (row.length < 5 || !row[0] || !row[0].trim()) continue;
+                        
+                        const name = row[0].trim();
+                        const hsn = row[1] ? row[1].trim() : '';
+                        const qty = Number(row[2]) || 1;
+                        const unit = row[3] ? row[3].trim() : 'Pcs';
+                        const rate = Number(row[4]) || 0;
+                        const gst = row.length > 5 && row[5] ? Number(row[5]) : 5;
+                        
+                        const taxable = qty * rate;
+                        const gstAmt = taxable * (gst / 100);
+                        
+                        newItems.push({
+                            id: Date.now() + Math.random(),
+                            name, hsn, qty, unit, rate, gst, taxable, gstAmt, total: taxable + gstAmt
+                        });
+                    }
+                    if (newItems.length > 0) {
+                        setItems(prev => [...prev, ...newItems]);
+                        alert(`Imported ${newItems.length} items successfully!`);
+                    } else {
+                        alert('No valid items found in CSV');
+                    }
+                    e.target.value = null;
+                };
+                reader.readAsText(file);
+            };
+
+            const handleDownload = useCallback(async () => {
+                if (items.length === 0) return alert('Please add at least one item!');
+                
+                setStatus({ type: 'loading', message: 'Generating PDF...' });
+                
+                try {
+                    // Try Screenshot method first
+                    const fileName = `${formData.invoice.no}_${(formData.customer.name || 'Customer').slice(0, 10)}.pdf`.replace(/[^a-zA-Z0-9_.-]/g, '_');
+                    await generatePDF('invoice-capture', fileName);
+                    setStatus({ type: 'success', message: 'PDF Downloaded!' });
+                    setTimeout(() => setStatus(null), 2000);
+                } catch (err) {
+                    // Fallback to Print
+                    console.error("PDF Gen Failed", err);
+                    setStatus({ type: 'info', message: 'Opening Print Dialog... (Save as PDF)' });
+                    
+                    // Small delay to let UI update before print dialog blocks thread
+                    setTimeout(() => {
+                        window.print();
+                        setStatus(null);
+                    }, 500);
+                }
+            }, [items, formData]);
+
+            const handleReset = () => {
+                if (!confirm('Clear everything?')) return;
+                setItems([]);
+                setFormData(prev => ({
+                    ...prev,
+                    customer: { name: '', phone: '', address: '' },
+                    invoice: { ...prev.invoice, no: `INV-${String(Math.floor(Math.random() * 9000) + 1000).slice(-4)}`, date: new Date().toISOString().split('T')[0], payment: 'Cash' }
+                }));
+            };
+
+            return (
+                <div className="min-h-screen no-print">
+                    {/* Header */}
+                    <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+                        <div>
+                            <h1 className="text-xl font-black text-gray-800 tracking-tight flex items-center gap-2">🛒 KiranaPro <span className="text-emerald-500 text-sm font-medium px-2 py-0.5 bg-emerald-50 rounded-full">Invoice</span></h1>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {status && (
+                                <span className={`text-xs font-bold px-3 py-1 rounded-full animate-pulse ${status.type === 'loading' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                    {status.message}
+                                </span>
+                            )}
+                        </div>
+                    </header>
+                    
+                    {/* Main Content */}
+                    <div className="max-w-[1400px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        {/* Left: Form */}
+                        <div className="lg:col-span-4 xl:col-span-3 h-full">
+                            <FormPanel 
+                                formData={formData} setFormData={setFormData} 
+                                itemForm={itemForm} setItemForm={setItemForm} 
+                                items={items} setItems={setItems} 
+                                onDownload={handleDownload} 
+                                onReset={handleReset}
+                                onImportCSV={handleImportCSV}
+                                onExportCSV={handleExportCSV}
+                            />
+                        </div>
+                        
+                        {/* Right: Preview */}
+                        <div className="lg:col-span-8 xl:col-span-9">
+                            <InvoicePreview formData={formData} items={items} totals={totals} amountWords={amountWords} />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
