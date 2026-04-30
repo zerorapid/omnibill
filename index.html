@@ -238,10 +238,26 @@
             const updateCust = (f, v) => setFormData(prev => ({ ...prev, customer: { ...prev.customer, [f]: v } }));
             const updateInv = (f, v) => setFormData(prev => ({ ...prev, invoice: { ...prev.invoice, [f]: v } }));
 
+            const handleLogoUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => updateStore('logo', reader.result);
+                    reader.readAsDataURL(file);
+                }
+            };
+
             return (
                 <div className="space-y-0">
                     {/* Store Section */}
                     <SectionCard title="Store Details" icon="🏢">
+                        <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-3">
+                            <div className="flex-1">
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Store Logo</label>
+                                <input type="file" accept="image/*" onChange={handleLogoUpload} className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer" />
+                            </div>
+                            {formData.store.logo && <button onClick={() => updateStore('logo', '')} className="text-xs text-red-500 hover:text-red-700 font-bold px-2">Remove</button>}
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                             <Input label="Store Name" value={formData.store.name} onChange={e => updateStore('name', e.target.value)} placeholder="e.g. Acme Corp" />
                             <Select label="Business Type" value={formData.store.type} onChange={e => updateStore('type', e.target.value)} options={[
@@ -388,7 +404,14 @@
                         {/* Invoice Header */}
                         <div className={`px-8 py-8 flex justify-between items-start ${formData.invoice.template === 'Minimal' ? 'bg-white text-gray-800 border-b-2 border-gray-800' : 'bg-gray-900 text-white'}`}>
                             <div>
-                                <h1 className="text-3xl font-black tracking-tight mb-1">{formData.store.name || 'Your Business Name'}</h1>
+                                {formData.store.logo ? (
+                                    <div className="mb-3">
+                                        <img src={formData.store.logo} alt="Logo" className="max-h-16 max-w-[200px] object-contain" />
+                                        <h2 className="text-lg font-bold mt-2">{formData.store.name}</h2>
+                                    </div>
+                                ) : (
+                                    <h1 className="text-3xl font-black tracking-tight mb-1">{formData.store.name || 'Your Business Name'}</h1>
+                                )}
                                 <p className={`text-sm leading-relaxed max-w-md ${formData.invoice.template === 'Minimal' ? 'text-gray-500' : 'text-gray-400'}`}>
                                     {formData.store.address}<br/>
                                     {formData.store.gstin && <>GSTIN: <span className="font-mono">{formData.store.gstin}</span></>}
@@ -546,7 +569,7 @@
         // ──────────── MAIN APP ────────────
         const App = () => {
             const [formData, setFormData] = useState({
-                store: { name: 'Your Business Name', gstin: '', address: '', phone: '', email: '', type: 'Retail' },
+                store: { name: 'Your Business Name', gstin: '', address: '', phone: '', email: '', type: 'Retail', logo: '' },
                 customer: { name: '', phone: '', address: '' },
                 invoice: { no: `INV-${String(1).padStart(4, '0')}`, date: new Date().toISOString().split('T')[0], payment: 'Cash', place: 'intrastate', discountType: 'flat', discountValue: '', amountPaid: '', template: 'Standard' }
             });
