@@ -240,6 +240,16 @@
                                 { value: 'intrastate', label: 'Intra-State (CGST+SGST)' }, { value: 'interstate', label: 'Inter-State (IGST)' }
                             ]} />
                         </div>
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Adjustments & Payment</h4>
+                            <div className="grid grid-cols-3 gap-3">
+                                <Select label="Discount Type" value={formData.invoice.discountType} onChange={e => updateInv('discountType', e.target.value)} options={[
+                                    { value: 'flat', label: 'Flat (₹)' }, { value: 'percent', label: 'Percent (%)' }
+                                ]} />
+                                <Input label="Discount" type="number" min="0" value={formData.invoice.discountValue} onChange={e => updateInv('discountValue', e.target.value)} placeholder="0" />
+                                <Input label="Amount Paid" type="number" min="0" value={formData.invoice.amountPaid} onChange={e => updateInv('amountPaid', e.target.value)} placeholder="0" />
+                            </div>
+                        </div>
                     </SectionCard>
 
                     {/* Add Items Section */}
@@ -429,10 +439,26 @@
                                     {isInter && (
                                         <div className="flex justify-between text-gray-600"><span>IGST</span><span>₹{totals.totalGST.toFixed(2)}</span></div>
                                     )}
+                                    {totals.discountAmt > 0 && (
+                                        <div className="flex justify-between text-emerald-600 font-medium">
+                                            <span>Discount</span><span>-₹{totals.discountAmt.toFixed(2)}</span>
+                                        </div>
+                                    )}
                                     <div className="h-px bg-gray-200 my-1"></div>
                                     <div className="flex justify-between text-xl font-black text-gray-900 pt-1">
                                         <span>Grand Total</span><span>₹{totals.grandTotal.toFixed(2)}</span>
                                     </div>
+                                    
+                                    {(totals.amountPaid > 0 || formData.invoice.payment === 'Credit') && (
+                                        <>
+                                            <div className="flex justify-between text-gray-600 mt-2">
+                                                <span>Amount Paid</span><span className="font-bold text-gray-800">₹{totals.amountPaid.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-red-600 font-bold bg-red-50 -mx-2 px-2 py-1 rounded">
+                                                <span>Balance Due</span><span>₹{totals.balanceDue.toFixed(2)}</span>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -477,7 +503,7 @@
             const [formData, setFormData] = useState({
                 store: { name: 'Sri Lakshmi Kirana Stores', gstin: '29ABCDE1234F1Z5', address: '#42, MG Road, Bengaluru - 560011', phone: '+91 98765 43210', email: '' },
                 customer: { name: '', phone: '', address: '' },
-                invoice: { no: `INV-${String(1).padStart(4, '0')}`, date: new Date().toISOString().split('T')[0], payment: 'Cash', place: 'intrastate' }
+                invoice: { no: `INV-${String(1).padStart(4, '0')}`, date: new Date().toISOString().split('T')[0], payment: 'Cash', place: 'intrastate', discountType: 'flat', discountValue: '', amountPaid: '' }
             });
             const [items, setItems] = useState([]);
             const [itemForm, setItemForm] = useState({ name: '', hsn: '', qty: 1, unit: 'Pcs', rate: '', gst: 5 });
@@ -486,9 +512,21 @@
             const totals = useMemo(() => {
                 const subtotal = items.reduce((sum, i) => sum + i.taxable, 0);
                 const totalGST = items.reduce((sum, i) => sum + i.gstAmt, 0);
-                const grandTotal = items.reduce((sum, i) => sum + i.total, 0);
-                return { subtotal, totalGST, grandTotal };
-            }, [items]);
+                
+                let discountAmt = 0;
+                const dVal = Number(formData.invoice.discountValue) || 0;
+                if (formData.invoice.discountType === 'percent') {
+                    discountAmt = (subtotal + totalGST) * (dVal / 100);
+                } else {
+                    discountAmt = dVal;
+                }
+                
+                const grandTotal = Math.max(0, subtotal + totalGST - discountAmt);
+                const amountPaid = Number(formData.invoice.amountPaid) || 0;
+                const balanceDue = grandTotal - amountPaid;
+                
+                return { subtotal, totalGST, discountAmt, grandTotal, amountPaid, balanceDue };
+            }, [items, formData.invoice.discountValue, formData.invoice.discountType, formData.invoice.amountPaid]);
 
             const amountWords = useMemo(() => numberToWords(Math.round(totals.grandTotal)), [totals.grandTotal]);
 
