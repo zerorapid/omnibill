@@ -602,21 +602,13 @@
                             </div>
                         </div>
 
-                        {/* Footer: Bank & Terms */}
-                        <div className="px-8 pb-8 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs text-gray-500 border-t border-gray-100 pt-6">
-                            <div>
-                                <h4 className={`font-bold mb-2 flex items-center gap-2 ${tpl === 'Modern' ? 'text-violet-800' : 'text-gray-800'}`}>🏦 Bank Details</h4>
-                                <p className="leading-relaxed">
-                                    SBI | A/C: 1234567890 | IFSC: SBIN0001234<br/>
-                                    Holder: {formData.store.name}
-                                </p>
-                            </div>
-                            <div className="sm:text-right">
-                                <h4 className={`font-bold mb-2 ${tpl === 'Modern' ? 'text-violet-800' : 'text-gray-800'}`}>📜 Terms</h4>
+                        {/* Footer: Terms */}
+                        <div className="px-8 pb-8 text-xs text-gray-500 border-t border-gray-100 pt-6">
+                            <div className="text-center sm:text-left">
+                                <h4 className={`font-bold mb-2 ${tpl === 'Modern' ? 'text-violet-800' : 'text-gray-800'}`}>📜 Terms & Conditions</h4>
                                 <p className="leading-relaxed">
                                     1. Goods once sold will not be taken back.<br/>
-                                    2. Subject to local jurisdiction.<br/>
-                                    3. E. & O.E.
+                                    2. Subject to local jurisdiction.
                                 </p>
                             </div>
                         </div>
