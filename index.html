@@ -302,15 +302,16 @@
                     {/* Add Items Section */}
                     <SectionCard title="Inventory & Items" icon="📦">
                         <div className="grid grid-cols-12 gap-3 mb-2">
-                            <div className="col-span-12 sm:col-span-8">
+                            <div className="col-span-12 sm:col-span-6">
                                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Item / Service Description</label>
                                 <input id="item-name-input" list="catalog-list" value={itemForm.name} onChange={handleItemNameChange} onKeyDown={handleBarcodeScan} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm transition-all input-focus" placeholder="Search or type item..." />
                                 <datalist id="catalog-list">
                                     {catalog.map((c, i) => <option key={i} value={c.name} />)}
                                 </datalist>
                             </div>
-                            <div className="col-span-6 sm:col-span-2"><Input label="Qty" type="number" min="1" value={itemForm.qty} onChange={e => setItemForm({...itemForm, qty: Number(e.target.value)})} /></div>
-                            <div className="col-span-6 sm:col-span-2">
+                            <div className="col-span-4 sm:col-span-2"><Input label="Code/HSN" value={itemForm.hsn} onChange={e => setItemForm({...itemForm, hsn: e.target.value})} placeholder="0000" /></div>
+                            <div className="col-span-4 sm:col-span-2"><Input label="Qty" type="number" min="1" value={itemForm.qty} onChange={e => setItemForm({...itemForm, qty: Number(e.target.value)})} /></div>
+                            <div className="col-span-4 sm:col-span-2">
                                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Unit</label>
                                 <select value={itemForm.unit} onChange={e => setItemForm({...itemForm, unit: e.target.value})} className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm input-focus">
                                     {['Pcs','Kg','Ltr','Pkt','Box','Nos'].map(u => <option key={u}>{u}</option>)}
@@ -327,7 +328,7 @@
                             </div>
                             <div className="col-span-3 flex items-end">
                                 <button onClick={addItem} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg transition shadow-sm">
-                                    Add
+                                    Add Item
                                 </button>
                             </div>
                         </div>
@@ -341,7 +342,7 @@
                                         <div key={i.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg text-xs border border-gray-100">
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-bold text-gray-800 truncate">{i.name}</p>
-                                                <p className="text-[10px] text-gray-500">{i.qty} {i.unit} × ₹{i.rate}</p>
+                                                <p className="text-[10px] text-gray-500">{i.qty} {i.unit} × ₹{i.rate} {i.hsn ? `(HSN: ${i.hsn})` : ''}</p>
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <span className="font-bold text-emerald-600">₹{i.total.toFixed(2)}</span>
@@ -402,6 +403,10 @@
                             <Input label="GSTIN (Optional)" value={formData.store.gstin} onChange={e => updateStore('gstin', e.target.value.toUpperCase())} maxLength={15} />
                             <Input label="Address" value={formData.store.address} onChange={e => updateStore('address', e.target.value)} />
                         </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Input label="Store Phone" value={formData.store.phone} onChange={e => updateStore('phone', e.target.value)} />
+                            <Input label="Store Email" value={formData.store.email} onChange={e => updateStore('email', e.target.value)} type="email" />
+                        </div>
                     </SectionCard>
 
                     {/* Action Buttons */}
@@ -426,6 +431,7 @@
                 </div>
             );
         };
+
 
         // ──────────── RIGHT PANEL: INVOICE PREVIEW ────────────
         const InvoicePreview = ({ formData, items, totals, amountWords }) => {
