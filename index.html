@@ -261,179 +261,132 @@
             };
 
             return (
-                <div className="space-y-0">
-                    {/* Store Section */}
-                    <SectionCard title="Brand & Identity" icon="🎨">
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Brand Color</label>
-                                <input type="color" value={formData.store.brandColor} onChange={e => updateStore('brandColor', e.target.value)} className="w-full h-10 p-1 bg-white border border-gray-200 rounded-lg cursor-pointer" />
-                            </div>
-                            <Select label="Invoice Tone" value={formData.invoice.template} onChange={e => updateInv('template', e.target.value)} options={[
-                                { value: 'Standard', label: 'Enterprise Sharp' }, { value: 'Modern', label: 'Modern Pulse' }, { value: 'Customer', label: 'Warm Relationship' }, { value: 'Minimal', label: 'Pure Minimalist' }, { value: 'Thermal', label: 'Thermal POS' }
-                            ]} />
-                        </div>
-                        <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-3">
-                            <div className="flex-1">
-                                <label className="block text-xs font-semibold text-gray-600 mb-1">Store Logo</label>
-                                <input type="file" accept="image/*" onChange={handleLogoUpload} className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer" />
-                            </div>
-                            {formData.store.logo && <button onClick={() => updateStore('logo', '')} className="text-xs text-red-500 hover:text-red-700 font-bold px-2">Remove</button>}
-                        </div>
-                        <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                                <label className="text-xs font-semibold text-gray-600">E-Signature</label>
-                                <div className="flex bg-white border border-gray-200 rounded-md p-0.5">
-                                    <button onClick={() => updateStore('signatureType', 'image')} className={`px-2 py-0.5 text-[10px] rounded ${formData.store.signatureType === 'image' ? 'bg-emerald-600 text-white' : 'text-gray-500'}`}>Image</button>
-                                    <button onClick={() => updateStore('signatureType', 'text')} className={`px-2 py-0.5 text-[10px] rounded ${formData.store.signatureType === 'text' ? 'bg-emerald-600 text-white' : 'text-gray-500'}`}>Type</button>
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col h-[calc(100vh-140px)] no-print">
+                    <div className="flex-1 overflow-y-auto p-5 space-y-8 custom-scrollbar">
+                        
+                        {/* 1. Brand Identity */}
+                        <div className="space-y-4">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Brand & Style
+                            </h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2 text-center">Brand Color</label>
+                                    <input type="color" value={formData.store.brandColor} onChange={e => updateStore('brandColor', e.target.value)} className="w-full h-8 cursor-pointer rounded-lg overflow-hidden border-0 bg-transparent" />
+                                </div>
+                                <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl relative">
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2 text-center">Logo</label>
+                                    <div className="flex items-center justify-center">
+                                        <input type="file" accept="image/*" onChange={handleLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                        {formData.store.logo ? (
+                                            <img src={formData.store.logo} className="h-8 object-contain" />
+                                        ) : (
+                                            <div className="h-8 flex items-center text-[10px] text-gray-400 font-bold">UPLOAD</div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                            {formData.store.signatureType === 'image' ? (
-                                <div className="flex items-center gap-3">
-                                    <input type="file" accept="image/*" onChange={(e) => {
-                                        const file = e.target.files[0];
-                                        if (file) {
-                                            const reader = new FileReader();
-                                            reader.onloadend = () => updateStore('signature', reader.result);
-                                            reader.readAsDataURL(file);
-                                        }
-                                    }} className="flex-1 text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-emerald-50 file:text-emerald-700" />
-                                    {formData.store.signature && <button onClick={() => updateStore('signature', '')} className="text-[10px] text-red-500 font-bold">Remove</button>}
+                            <Input label="Store Name" value={formData.store.name} onChange={e => updateStore('name', e.target.value)} />
+                            
+                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase">E-Signature</label>
+                                    <div className="flex bg-white border border-gray-200 rounded-lg p-0.5 scale-90 origin-right">
+                                        <button onClick={() => updateStore('signatureType', 'image')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${formData.store.signatureType === 'image' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400'}`}>Draw</button>
+                                        <button onClick={() => updateStore('signatureType', 'text')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${formData.store.signatureType === 'text' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400'}`}>Type</button>
+                                    </div>
                                 </div>
-                            ) : (
-                                <input type="text" value={formData.store.signatureText} onChange={e => updateStore('signatureText', e.target.value)} placeholder="Type your name..." className="w-full px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-md" style={{ fontFamily: "'Dancing Script', cursive" }} />
-                            )}
+                                {formData.store.signatureType === 'image' ? (
+                                    <div className="flex items-center gap-3">
+                                        <input type="file" accept="image/*" onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => updateStore('signature', reader.result);
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }} className="flex-1 text-[10px] text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-white file:text-gray-600 file:font-bold" />
+                                    </div>
+                                ) : (
+                                    <input type="text" value={formData.store.signatureText} onChange={e => updateStore('signatureText', e.target.value)} placeholder="Type name..." className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm" style={{ fontFamily: "'Dancing Script', cursive" }} />
+                                )}
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Input label="Store Name" value={formData.store.name} onChange={e => updateStore('name', e.target.value)} placeholder="e.g. Acme Corp" />
-                            <Select label="Business Type" value={formData.store.type} onChange={e => updateStore('type', e.target.value)} options={[
-                                { value: 'Retail', label: 'Retail / Shop' }, { value: 'Service', label: 'Services / Agency' }, { value: 'Wholesale', label: 'B2B Wholesale' }, { value: 'Freelance', label: 'Freelance / Consultant' }, { value: 'Restaurant', label: 'Restaurant / Cafe' }, { value: 'Customer', label: 'Customer / Personal' }
-                            ]} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Input label="GSTIN" value={formData.store.gstin} onChange={e => updateStore('gstin', e.target.value.toUpperCase())} maxLength={15} placeholder="Optional" />
-                            <Input label="Address" value={formData.store.address} onChange={e => updateStore('address', e.target.value)} placeholder="City, State" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Input label="Phone" value={formData.store.phone} onChange={e => updateStore('phone', e.target.value)} />
-                            <Input label="Email" value={formData.store.email} onChange={e => updateStore('email', e.target.value)} type="email" />
-                        </div>
-                    </SectionCard>
 
-                    {/* Customer Section */}
-                    <SectionCard title="Bill To" icon="👤">
-                        <div className="grid grid-cols-2 gap-3">
+                        {/* 2. Invoice Details */}
+                        <div className="space-y-4">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span> Ledger Details
+                            </h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Input label="Invoice Number" value={formData.invoice.no} onChange={e => updateInv('no', e.target.value)} />
+                                <Input label="Invoice Date" type="date" value={formData.invoice.date} onChange={e => updateInv('date', e.target.value)} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase ml-1">Payment</label>
+                                    <select value={formData.invoice.payment} onChange={e => updateInv('payment', e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:border-emerald-500 outline-none transition-all">
+                                        <option>Cash</option>
+                                        <option>UPI/Online</option>
+                                        <option>Credit</option>
+                                        <option>Card</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase ml-1">Order Source</label>
+                                    <select value={formData.invoice.orderType} onChange={e => updateInv('orderType', e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:border-emerald-500 outline-none transition-all">
+                                        <option>Walk-in</option>
+                                        <option>Direct Order</option>
+                                        <option>Online Order</option>
+                                        <option>Phone Order</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. Customer Info */}
+                        <div className="space-y-4">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-violet-500 rounded-full"></span> Bill To
+                            </h3>
                             <Input label="Customer Name" value={formData.customer.name} onChange={e => updateCust('name', e.target.value)} placeholder="Walk-in Customer" />
-                            <Input label="Phone" value={formData.customer.phone} onChange={e => updateCust('phone', e.target.value)} />
+                            <Input label="Phone Number" value={formData.customer.phone} onChange={e => updateCust('phone', e.target.value)} />
                         </div>
-                        <Input label="Address" value={formData.customer.address} onChange={e => updateCust('address', e.target.value)} />
-                        <div className="grid grid-cols-2 gap-3">
-                            <Select label="Payment Mode" value={formData.invoice.payment} onChange={e => updateInv('payment', e.target.value)} options={[
-                                { value: 'Cash', label: '💵 Cash' }, { value: 'UPI', label: '📱 UPI' }, { value: 'Card', label: '💳 Card' }, { value: 'Credit', label: '📅 Credit' }
-                            ]} />
-                            <Select label="Place of Supply" value={formData.invoice.place} onChange={e => updateInv('place', e.target.value)} options={[
-                                { value: 'intrastate', label: 'Intra-State (CGST+SGST)' }, { value: 'interstate', label: 'Inter-State (IGST)' }
-                            ]} />
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Adjustments & Style</h4>
-                            <div className="grid grid-cols-4 gap-3">
-                                <Select label="Template" value={formData.invoice.template} onChange={e => updateInv('template', e.target.value)} options={[
-                                    { value: 'Standard', label: 'Standard (A4)' }, { value: 'Minimal', label: 'Minimalist' }, { value: 'Modern', label: 'Modern Purple' }, { value: 'Thermal', label: 'Thermal POS (80mm)' }, { value: 'Customer', label: 'Customer Centric' }
-                                ]} />
-                                <Select label="Discount Type" value={formData.invoice.discountType} onChange={e => updateInv('discountType', e.target.value)} options={[
-                                    { value: 'flat', label: 'Flat (₹)' }, { value: 'percent', label: 'Percent (%)' }
-                                ]} />
-                                <Input label="Discount" type="number" min="0" value={formData.invoice.discountValue} onChange={e => updateInv('discountValue', e.target.value)} placeholder="0" />
-                                <Input label="Amount Paid" type="number" min="0" value={formData.invoice.amountPaid} onChange={e => updateInv('amountPaid', e.target.value)} placeholder="0" />
-                            </div>
-                        </div>
-                    </SectionCard>
 
-                    {/* Add Items Section */}
-                    <SectionCard title="Add Items" icon="📦">
-                        <div className="grid grid-cols-12 gap-3 mb-2">
-                            <div className="col-span-12 sm:col-span-6">
-                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Item / Service Description</label>
-                                <input id="item-name-input" list="catalog-list" value={itemForm.name} onChange={handleItemNameChange} onKeyDown={handleBarcodeScan} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm transition-all input-focus" placeholder="Search or type item..." />
-                                <datalist id="catalog-list">
+                        {/* 4. Line Items */}
+                        <div className="space-y-4">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span> Add Items
+                            </h3>
+                            <div className="p-4 bg-gray-900 rounded-2xl space-y-4 shadow-xl">
+                                <input id="item-name-input" type="text" list="cat-list" value={itemForm.name} onChange={handleItemNameChange} onKeyDown={handleBarcodeScan} placeholder="Search or Type Item..." className="w-full px-4 py-3 bg-gray-800 text-white border-0 rounded-xl text-sm placeholder:text-gray-500 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
+                                <datalist id="cat-list">
                                     {catalog.map((c, i) => <option key={i} value={c.name} />)}
                                 </datalist>
-                            </div>
-                            <div className="col-span-4 sm:col-span-2"><Input label="Code/HSN" value={itemForm.hsn} onChange={e => setItemForm({...itemForm, hsn: e.target.value})} placeholder="0000" /></div>
-                            <div className="col-span-4 sm:col-span-2"><Input label="Quantity" type="number" min="1" value={itemForm.qty} onChange={e => setItemForm({...itemForm, qty: Number(e.target.value)})} /></div>
-                            <div className="col-span-4 sm:col-span-2">
-                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Unit</label>
-                                <select value={itemForm.unit} onChange={e => setItemForm({...itemForm, unit: e.target.value})} className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm input-focus">
-                                    {['Pcs','Kg','Ltr','Pkt','Box','Nos'].map(u => <option key={u}>{u}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-12 gap-3">
-                            <div className="col-span-5"><Input label="Rate (₹)" type="number" step="0.01" value={itemForm.rate} onChange={e => setItemForm({...itemForm, rate: Number(e.target.value)})} placeholder="0.00" /></div>
-                            <div className="col-span-3">
-                                <label className="block text-xs font-semibold text-gray-600 mb-1.5">GST %</label>
-                                <select value={itemForm.gst} onChange={e => setItemForm({...itemForm, gst: Number(e.target.value)})} className="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm input-focus">
-                                    {[0, 5, 12, 18, 28].map(r => <option key={r} value={r}>{r}%</option>)}
-                                </select>
-                            </div>
-                            <div className="col-span-4 flex items-end">
-                                <button onClick={addItem} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg transition shadow-sm flex items-center justify-center gap-2">
-                                    <span>+</span> Add
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input type="number" value={itemForm.qty} onChange={e => setItemForm({...itemForm, qty: Number(e.target.value)})} placeholder="Qty" className="px-4 py-2.5 bg-gray-800 text-white border-0 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500" />
+                                    <input type="number" value={itemForm.rate} onChange={e => setItemForm({...itemForm, rate: Number(e.target.value)})} placeholder="Rate" className="px-4 py-2.5 bg-gray-800 text-white border-0 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500" />
+                                </div>
+                                <button onClick={addItem} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-black text-xs tracking-widest shadow-lg shadow-emerald-900/40 hover:bg-emerald-500 active:scale-95 transition-all">
+                                    ADD TO BILL
                                 </button>
                             </div>
                         </div>
 
-                        {/* Item List Mini */}
-                        {items.length > 0 && (
-                            <div className="mt-4 border-t pt-3">
-                                <p className="text-xs font-bold text-gray-400 uppercase mb-2">Added Items ({items.length})</p>
-                                <div className="space-y-2 max-h-32 overflow-y-auto custom-scroll pr-1">
-                                    {items.map(i => (
-                                        <div key={i.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg text-xs border border-gray-100">
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-gray-800 truncate">{i.name}</p>
-                                                <p className="text-gray-400">{i.qty} {i.unit} @ ₹{i.rate}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-emerald-600">₹{i.total.toFixed(2)}</span>
-                                                <button onClick={() => removeItem(i.id)} className="text-red-400 hover:text-red-600 font-bold px-1">×</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </SectionCard>
-
-                    {/* Data Options */}
-                    <SectionCard title="Data Backup" icon="💾">
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                            <button onClick={() => document.getElementById('csv-upload').click()} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
-                                📥 Import CSV
+                        {/* 5. Utility Actions */}
+                        <div className="grid grid-cols-2 gap-3 pb-4">
+                            <button onClick={() => document.getElementById('csv-imp').click()} className="flex items-center justify-center gap-2 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-500 hover:bg-gray-100 transition-all">
+                                📥 IMPORT
                             </button>
-                            <input type="file" id="csv-upload" accept=".csv" className="hidden" onChange={onImportCSV} />
-                            
-                            <button onClick={onExportCSV} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
-                                📤 Export CSV
+                            <input id="csv-imp" type="file" accept=".csv" onChange={onImportCSV} className="hidden" />
+                            <button onClick={onExportCSV} className="flex items-center justify-center gap-2 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-500 hover:bg-gray-100 transition-all">
+                                📤 EXPORT
                             </button>
                         </div>
-                        <a href="./sample_items.csv" download className="text-xs text-blue-600 hover:text-blue-800 underline block text-center">
-                            Download Sample CSV format
-                        </a>
-                    </SectionCard>
-
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-2 gap-3 pb-6">
-                        <button onClick={onDownload} className="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold shadow-md transition flex items-center justify-center gap-2">
-                            <span>📥</span> Save PDF
-                        </button>
-                        <button onClick={onWhatsApp} className="bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold shadow-md transition flex items-center justify-center gap-2">
-                            <span>📱</span> WhatsApp
-                        </button>
-                        <button onClick={onReset} className="col-span-2 bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 py-3 rounded-xl font-bold shadow-sm transition">
-                            🔄 Reset Invoice
-                        </button>
+                    </div>
+                    
+                    <div className="p-5 border-t border-gray-100 bg-white">
+                        <button onClick={onReset} className="w-full py-2.5 text-[10px] font-black text-red-500 uppercase tracking-[0.2em] hover:bg-red-50 rounded-xl transition-all">Reset Session</button>
                     </div>
                 </div>
             );
@@ -442,6 +395,7 @@
         // ──────────── RIGHT PANEL: INVOICE PREVIEW ────────────
         const InvoicePreview = ({ formData, items, totals, amountWords }) => {
             const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+            const orderSource = formData.invoice.orderType || 'Walk-in';
             const isInter = formData.invoice.place === 'interstate';
             const tpl = formData.invoice.template;
             const type = formData.store.type;
@@ -573,6 +527,10 @@
                                 <div className="flex sm:justify-end gap-4 text-sm">
                                     <span className="text-gray-400 font-medium text-[10px] uppercase">Payment:</span>
                                     <span className="font-bold" style={{ color: formData.store.brandColor }}>{formData.invoice.payment}</span>
+                                </div>
+                                <div className="flex sm:justify-end gap-4 text-sm">
+                                    <span className="text-gray-400 font-medium text-[10px] uppercase">Source:</span>
+                                    <span className="font-bold text-gray-800">{orderSource}</span>
                                 </div>
                             </div>
                         </div>
@@ -720,7 +678,7 @@
             const [formData, setFormData] = useState({
                 store: { name: 'Your Business Name', gstin: '', address: '', phone: '', email: '', type: 'Retail', logo: '', signature: '', signatureText: '', signatureType: 'image', brandColor: '#10b981' },
                 customer: { name: '', phone: '', address: '' },
-                invoice: { no: `INV-${String(1).padStart(4, '0')}`, date: new Date().toISOString().split('T')[0], payment: 'Cash', place: 'intrastate', discountType: 'flat', discountValue: '', amountPaid: '', template: 'Standard' }
+                invoice: { no: `INV-${String(Math.floor(Math.random() * 9000) + 1000)}`, date: new Date().toISOString().split('T')[0], payment: 'Cash', orderType: 'Walk-in', place: 'intrastate', discountType: 'flat', discountValue: '', amountPaid: '', template: 'Standard' }
             });
             const [items, setItems] = useState([]);
             const [itemForm, setItemForm] = useState({ name: '', hsn: '', qty: 1, unit: 'Pcs', rate: '', gst: 5 });
