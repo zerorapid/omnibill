@@ -53,6 +53,17 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        window.onerror = function(msg, url, line, col, error) {
+            document.body.innerHTML = `<div style="color:red;padding:40px;font-family:sans-serif;background:#fff;height:100vh;">
+                <h1 style="margin:0 0 10px 0;">🚀 Frontend Error Detected</h1>
+                <p style="font-weight:bold;color:#333;">${msg}</p>
+                <div style="background:#f5f5f5;padding:15px;border-radius:8px;font-size:12px;overflow:auto;margin-top:20px;">
+                    <pre style="margin:0;">${error?.stack || 'No stack trace available'}</pre>
+                </div>
+            </div>`;
+            return false;
+        };
+
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
         // ─────────── UTILITY: Number to Words (Indian Format) ────────────
