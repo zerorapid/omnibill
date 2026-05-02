@@ -261,7 +261,7 @@
                         <div className="grid grid-cols-2 gap-3">
                             <Input label="Store Name" value={formData.store.name} onChange={e => updateStore('name', e.target.value)} placeholder="e.g. Acme Corp" />
                             <Select label="Business Type" value={formData.store.type} onChange={e => updateStore('type', e.target.value)} options={[
-                                { value: 'Retail', label: 'Retail / Shop' }, { value: 'Service', label: 'Services / Agency' }, { value: 'Wholesale', label: 'B2B Wholesale' }, { value: 'Freelance', label: 'Freelance / Consultant' }, { value: 'Restaurant', label: 'Restaurant / Cafe' }
+                                { value: 'Retail', label: 'Retail / Shop' }, { value: 'Service', label: 'Services / Agency' }, { value: 'Wholesale', label: 'B2B Wholesale' }, { value: 'Freelance', label: 'Freelance / Consultant' }, { value: 'Restaurant', label: 'Restaurant / Cafe' }, { value: 'Customer', label: 'Customer / Personal' }
                             ]} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -293,7 +293,7 @@
                             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Adjustments & Style</h4>
                             <div className="grid grid-cols-4 gap-3">
                                 <Select label="Template" value={formData.invoice.template} onChange={e => updateInv('template', e.target.value)} options={[
-                                    { value: 'Standard', label: 'Standard (A4)' }, { value: 'Minimal', label: 'Minimalist' }, { value: 'Modern', label: 'Modern Purple' }, { value: 'Thermal', label: 'Thermal POS (80mm)' }
+                                    { value: 'Standard', label: 'Standard (A4)' }, { value: 'Minimal', label: 'Minimalist' }, { value: 'Modern', label: 'Modern Purple' }, { value: 'Thermal', label: 'Thermal POS (80mm)' }, { value: 'Customer', label: 'Customer Centric' }
                                 ]} />
                                 <Select label="Discount Type" value={formData.invoice.discountType} onChange={e => updateInv('discountType', e.target.value)} options={[
                                     { value: 'flat', label: 'Flat (₹)' }, { value: 'percent', label: 'Percent (%)' }
@@ -461,11 +461,13 @@
             const getHeaderBg = () => {
                 if (tpl === 'Modern') return 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white';
                 if (tpl === 'Minimal') return 'bg-white text-gray-800 border-b-2 border-gray-800';
+                if (tpl === 'Customer') return 'bg-emerald-600 text-white rounded-t-xl';
                 return 'bg-gray-900 text-white';
             };
 
             const getMetaBg = () => {
                 if (tpl === 'Modern') return 'bg-violet-50 border-b border-violet-100';
+                if (tpl === 'Customer') return 'bg-emerald-50 border-b border-emerald-100';
                 return 'bg-gray-50 border-b border-gray-200';
             };
 
@@ -499,8 +501,12 @@
                         {/* Invoice Meta Info */}
                         <div className={`px-8 py-6 grid grid-cols-1 sm:grid-cols-2 gap-6 ${getMetaBg()}`}>
                             <div>
-                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bill To</h4>
-                                <p className="text-lg font-bold text-gray-800">{formData.customer.name || 'Walk-in Customer'}</p>
+                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{tpl === 'Customer' ? 'Customer Message' : 'Bill To'}</h4>
+                                {tpl === 'Customer' ? (
+                                    <p className="text-lg font-bold text-emerald-800 italic">"Dear {formData.customer.name || 'Friend'}, thank you for shopping with us today!"</p>
+                                ) : (
+                                    <p className="text-lg font-bold text-gray-800">{formData.customer.name || 'Walk-in Customer'}</p>
+                                )}
                                 <p className="text-sm text-gray-500">{formData.customer.address || '-'}</p>
                                 <p className="text-sm text-gray-500 mt-1">Ph: {formData.customer.phone || '-'}</p>
                             </div>
@@ -524,7 +530,7 @@
                         <div className="p-8">
                             <table className="w-full text-sm border-collapse">
                                 <thead>
-                                    <tr className={`border-b-2 ${tpl === 'Modern' ? 'border-violet-200 text-violet-500' : 'border-gray-200 text-gray-500'} text-[10px] uppercase tracking-wider`}>
+                                    <tr className={`border-b-2 ${tpl === 'Modern' ? 'border-violet-200 text-violet-500' : tpl === 'Customer' ? 'border-emerald-200 text-emerald-600' : 'border-gray-200 text-gray-500'} text-[10px] uppercase tracking-wider`}>
                                         <th className="pb-3 text-left">Description</th>
                                         <th className="pb-3 text-center w-24">{isService ? 'Hrs' : 'Qty'}</th>
                                         <th className="pb-3 text-right w-28">Price</th>
@@ -559,7 +565,7 @@
                             </div>
                             
                             <div className="flex justify-end">
-                                <div className={`w-full sm:w-72 rounded-xl p-5 space-y-3 text-sm border ${tpl === 'Modern' ? 'bg-violet-50 border-violet-100' : 'bg-gray-50 border-gray-100'}`}>
+                                <div className={`w-full sm:w-72 rounded-xl p-5 space-y-3 text-sm border ${tpl === 'Modern' ? 'bg-violet-50 border-violet-100' : tpl === 'Customer' ? 'bg-emerald-50 border-emerald-100' : 'bg-gray-50 border-gray-100'}`}>
                                     <div className="flex justify-between text-gray-600">
                                         <span>Sub Total</span><span>₹{totals.subtotal.toFixed(2)}</span>
                                     </div>
@@ -578,7 +584,7 @@
                                         </div>
                                     )}
                                     <div className={`h-px my-1 ${tpl === 'Modern' ? 'bg-violet-200' : 'bg-gray-200'}`}></div>
-                                    <div className={`flex justify-between text-xl font-black pt-1 ${tpl === 'Modern' ? 'text-violet-900' : 'text-gray-900'}`}>
+                                    <div className={`flex justify-between text-xl font-black pt-1 ${tpl === 'Modern' ? 'text-violet-900' : tpl === 'Customer' ? 'text-emerald-900' : 'text-gray-900'}`}>
                                         <span>Grand Total</span><span>₹{totals.grandTotal.toFixed(2)}</span>
                                     </div>
                                     
@@ -615,7 +621,7 @@
                             </div>
                         </div>
                         
-                        <div className={`${tpl === 'Modern' ? 'bg-violet-900' : 'bg-gray-900'} py-3 text-center text-[10px] text-gray-400 tracking-wider`}>
+                        <div className={`${tpl === 'Modern' ? 'bg-violet-900' : tpl === 'Customer' ? 'bg-emerald-900' : 'bg-gray-900'} py-3 text-center text-[10px] text-gray-400 tracking-wider`}>
                             THANK YOU FOR YOUR BUSINESS
                         </div>
                     </div>
