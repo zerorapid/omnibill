@@ -471,7 +471,7 @@
                                 <tbody>
                                     {items.map((item, idx) => (
                                         <tr key={idx}>
-                                            <td className="py-1 align-top pr-1">{item.name} <br/><span className="text-[8px]">{item.rate} + {item.gst}%</span></td>
+                                            <td className="py-1 align-top pr-1">{item.name} <br/><span className="text-[8px]">HSN: {item.hsn || '-'} | Rate: {item.rate} | GST: {item.gst}%</span></td>
                                             <td className="py-1 align-top text-center">{item.qty}</td>
                                             <td className="py-1 align-top text-right">{item.total.toFixed(2)}</td>
                                         </tr>
